@@ -1,41 +1,31 @@
-name: Laravel CI/CD
+test:
+  runs-on: ubuntu-latest
 
-on:
-  push:
-    branches: [ "main" ]
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Install Dependencies
+      run: composer install
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.2
+    - name: Copy .env
+      run: cp .env.example .env
 
-      - name: Install Dependencies
-        run: composer install
+    - name: Generate key
+      run: php artisan key:generate
 
-      - name: Run Test
-        run: php artisan test
+    - name: Create SQLite DB
+      run: |
+        mkdir -p database
+        touch database/database.sqlite
 
-  docker:
-    needs: test
-    runs-on: ubuntu-latest
+    - name: Run Migration
+      run: php artisan migrate --force
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Login Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-      - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/laravel-cicd .
-
-      - name: Push Docker Image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/laravel-cicd
+    - name: Run Test
+      run: php artisan test
